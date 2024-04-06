@@ -111,13 +111,13 @@ def get_item(item_url, count):
                 connectType = cells[1].text.strip()
             elif 'Kích thước' in key or 'Kích cỡ' in key:
                 size = cells[1].text.strip()
-            elif 'Switch' in key or 'Loại switch':
+            elif 'Switch' in key or 'Loại switch' in key:
                 switch = cells[1].text.strip()
   
     csv_writer.writerow([name,brand,model,connectType,size,switch,formatted_price])
 
 def main():
-    max_pages = 23  # Số trang tối đa cần crawl
+    max_pages = 23 # Số trang tối đa cần crawl
     keyboard_crawler(max_pages)
 
 if __name__ == "__main__":
