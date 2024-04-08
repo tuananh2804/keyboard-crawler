@@ -3,7 +3,7 @@ import numpy as np
 import re
 
 def read_data_from_csv(filename):
-    df = pd.read_csv(filename, sep='\t',encoding='UTF-16')
+    df = pd.read_csv(filename, sep='\t',encoding='utf-8')
     return df 
 
 def replace_missing_manufacturer(df):
@@ -80,8 +80,13 @@ def remove_special_charactersKichThuoc(text):
     # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
     if isinstance(text, str):
         # Xóa các kí tự như "/", "(", "mm" và toàn bộ kí tự phía sau
-        text = re.sub(r'[/(mm*xX×.].*', '', text)
+        text = re.sub(r'[/(mm*xX×,.-].*', '', text)
     return text
+
+def remove_commas(price):
+    if isinstance(price, str):
+        return price.replace(',', '')
+    return price
 
 def simplify_decimal_to_integer(text):
     # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
@@ -91,7 +96,37 @@ def simplify_decimal_to_integer(text):
         if match:
             decimal_number = float(match.group())
             integer_number = int(decimal_number)
-            text = re.sub(r'\d+\.\d+', str(integer_number), text)
+            text = re.sub(r'\d+\.\d+', str(integer_number), text)   
+    return text
+
+def update_size_column(df):
+    for index, row in df.iterrows():
+        size_value = row['Kích thước']
+        if isinstance(size_value, str):
+            if 'Fullsize' in size_value or 'fullsize' in size_value:
+                df.at[index, 'Kích thước'] = '430'
+            elif 'Chiều cao' in size_value or 'Độ dài' in size_value or 'Đang cập nhật' in size_value:
+                df.at[index, 'Kích thước'] = '0'
+            elif 'Độ dài: ' in size_value or 'Đang cập nhật' in size_value:
+                df.at[index, 'Kích thước'] = '0'
+            elif '%' in size_value:
+                df.at[index, 'Kích thước'] = '0'
+            else:
+                # Kiểm tra nếu chuỗi chứa chữ cái
+                if any(c.isalpha() for c in size_value):
+                    df.at[index, 'Kích thước'] = '0'
+    return df
+
+
+def simplify_decimal_to_integer(text):
+    # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
+    if isinstance(text, str):
+        # Tìm kiếm số thập phân trong chuỗi và chuyển về số tự nhiên
+        match = re.search(r'\d+\.\d+', text)
+        if match:
+            decimal_number = float(match.group())
+            integer_number = int(decimal_number)
+            text = re.sub(r'\d+\,\d+', str(integer_number), text)
     return text
 def change_connection_values(df):
     df['Kết nối'] = df['Kết nối'].replace(['Dây', 'Có dây ', 'Có dây'], 'Có dây')
@@ -109,16 +144,42 @@ def update_connection_type(df):
             else:
                 df.at[index, 'Kết nối'] = 'không dây'
     return df
-def update_size_column(df):
-    for index, row in df.iterrows():
-        connection_type = row['Kích thước']
-        if isinstance(connection_type, str):
-            if 'Fullsize' in connection_type or 'fullsize' in connection_type or 'Full size' in connection_type or 'Full Size' in connection_type:
-                df.at[index, 'Kích thước'] = '430'
+
+def convert_decimal_to_integer(value):
+    if isinstance(value, str):
+        # Tìm và chuyển đổi giá trị số thập phân thành số tự nhiên
+        match = re.match(r'^(\d+),(\d+)$', value)
+        if match:
+            return int(match.group(1) + match.group(2))  # Kết hợp các nhóm số và chuyển đổi thành số tự nhiên
+    return value
+
+def remove_rows_with_size_info(df):
+    # Chuyển đổi cột "Kích thước" thành chuỗi
+    df['Kích thước'] = df['Kích thước'].astype(str)
+
+    # Tạo một danh sách các chuỗi mô tả kích thước
+    size_info_strings = ["Độ dài", "Chiều rộng", "Chiều cao"]
+
+    # Tạo một mặt nạ (mask) để xác định các hàng cần xóa
+    mask = df['Kích thước'].str.contains('|'.join(size_info_strings), case=False)
+
+    # Xóa các hàng dữ liệu theo mặt nạ
+    df = df[~mask]
+
     return df
 
+def replace_nan_with_zero(df):
+    # Thay thế giá trị NaN thành 0 trong toàn bộ DataFrame
+    df.fillna(0, inplace=True)
+    return df
+
+def add_zero_to_two_digits(value):
+    if isinstance(value, str) and len(value) == 2:
+        return value + '0'
+    return value
+
 # Đọc dữ liệu từ file CSV
-df = read_data_from_csv('raw_data.csv')
+df = read_data_from_csv('data.csv')
 
 print("Thông kê dữ liệu trống trước khi thay thế:")
 check_missing_data(df)
@@ -140,14 +201,36 @@ df['Model'] = df['Model'].apply(remove_special_characters)
 df['Kết nối'] = df['Kết nối'].apply(remove_special_characters)
 df['Loại switch'] = df['Loại switch'].apply(remove_special_characters)
 
+df['Loại switch'] = df['Loại switch'].apply(remove_special_characters)
+
+df = remove_rows_with_size_info(df)
+
 df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichThuoc)
 
-df = replace_missing_value(df)
-df = change_connection_values(df)
-df = update_connection_type(df)
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
+
+
+
+
+df = update_size_column(df)
+df['Giá(đ)'] = df['Giá(đ)'].apply(remove_commas)
+df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
+df = change_connection_values(df)
+df = replace_missing_value(df)
+df = update_connection_type(df)
+
+
+
+
+df = replace_nan_with_zero(df)
+
 df = update_size_column(df)
 
+
+
+df['Kích thước'] = df['Kích thước'].apply(add_zero_to_two_digits)
+
+df = convert_decimal_to_integer(df)
 # Lưu dữ liệu đã được cập nhật vào file CSV
 df.to_csv('clean_data.csv', index=False,encoding='utf-8-sig')
 

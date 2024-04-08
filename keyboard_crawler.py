@@ -19,8 +19,6 @@ def keyboard_crawler(max_pages):
     csv_writer.writerow(['Tên SP','Nhà sản xuất','Model','Kết nối','Kích thước','Loại switch','Giá(đ)'])
 
 
- 
-
     # define the start page
     page = 1
     count = 1
