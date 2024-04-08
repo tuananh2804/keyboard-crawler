@@ -80,7 +80,18 @@ def remove_special_charactersKichThuoc(text):
     # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
     if isinstance(text, str):
         # Xóa các kí tự như "/", "(", "mm" và toàn bộ kí tự phía sau
-        text = re.sub(r'[/(mm].*', '', text)
+        text = re.sub(r'[/(mm*xX×.].*', '', text)
+    return text
+
+def simplify_decimal_to_integer(text):
+    # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
+    if isinstance(text, str):
+        # Tìm kiếm số thập phân trong chuỗi và chuyển về số tự nhiên
+        match = re.search(r'\d+\.\d+', text)
+        if match:
+            decimal_number = float(match.group())
+            integer_number = int(decimal_number)
+            text = re.sub(r'\d+\.\d+', str(integer_number), text)
     return text
 def change_connection_values(df):
     df['Kết nối'] = df['Kết nối'].replace(['Dây', 'Có dây ', 'Có dây'], 'Có dây')
@@ -98,8 +109,16 @@ def update_connection_type(df):
             else:
                 df.at[index, 'Kết nối'] = 'không dây'
     return df
+def update_size_column(df):
+    for index, row in df.iterrows():
+        connection_type = row['Kích thước']
+        if isinstance(connection_type, str):
+            if 'Fullsize' in connection_type or 'fullsize' in connection_type or 'Full size' in connection_type or 'Full Size' in connection_type:
+                df.at[index, 'Kích thước'] = '430'
+    return df
+
 # Đọc dữ liệu từ file CSV
-df = read_data_from_csv('keyboard_data.csv')
+df = read_data_from_csv('raw_data.csv')
 
 print("Thông kê dữ liệu trống trước khi thay thế:")
 check_missing_data(df)
@@ -126,9 +145,10 @@ df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichT
 df = replace_missing_value(df)
 df = change_connection_values(df)
 df = update_connection_type(df)
-df.drop_duplicates()
+df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
+df = update_size_column(df)
 
 # Lưu dữ liệu đã được cập nhật vào file CSV
-df.to_csv('updated_data.csv', index=False,encoding='utf-8-sig')
+df.to_csv('clean_data.csv', index=False,encoding='utf-8-sig')
 
-print("Kiểm tra và cập nhật dữ liệu thành công. Kết quả đã được lưu vào file 'updated_data.csv'")
+print("Kiểm tra và cập nhật dữ liệu thành công. Kết quả đã được lưu vào file 'clean_data.csv'")

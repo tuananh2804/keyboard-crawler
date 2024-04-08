@@ -14,7 +14,7 @@ def keyboard_crawler(max_pages):
     global csv_writer
 
     # create and opens a .csv file in write mode and loads in the appropriate headlings
-    csv_file = open('keyboard_data.csv', 'w',newline='',encoding='UTF-16')
+    csv_file = open('raw_data.csv', 'w',newline='',encoding='UTF-16')
     csv_writer = csv.writer(csv_file,delimiter='\t')
     csv_writer.writerow(['Tên SP','Nhà sản xuất','Model','Kết nối','Kích thước','Loại switch','Giá(đ)'])
 
@@ -82,13 +82,10 @@ def get_item(item_url, count):
         name = None
     try:
         price_tag = soup.find('strong', class_='giakm')
-        price = int(price_tag['data-price'])
-
-        # Format the price with commas
-        formatted_price = '{:,.0f}'.format(float(price))
+        price = int(price_tag['data-price'])  
         
     except:
-        formatted_price = None
+        price = None
 
    # csv_writer.writerow([name])
 
