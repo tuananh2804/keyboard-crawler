@@ -85,20 +85,19 @@ def remove_special_charactersKichThuoc(text):
 def change_connection_values(df):
     df['Kết nối'] = df['Kết nối'].replace(['Dây', 'Có dây ', 'Có dây'], 'Có dây')
     return df
-def process_connection_column(df):
-    # Thay đổi giá trị trong cột 'Kết nối', giữ nguyên các giá trị '0', 'Có dây' và 'Có dây\r'
-    df['Kết nối'] = df['Kết nối'].replace({'Có dây': 'Có dây', 'Có dây\r': 'Có dây'})
-    
-    # Thay đổi tất cả các giá trị khác 'Có dây' thành 'Không dây'
-    df.loc[(df['Kết nối'] != 'Có dây') & (df['Kết nối'] != 0), 'Kết nối'] = 'Không dây'
-
+def update_connection_type(df):
+    for index, row in df.iterrows():
+        connection_type = row['Kết nối']
+        if isinstance(connection_type, str):
+            if 'Type C' in connection_type:
+                df.at[index, 'Kết nối'] = 'vừa có dây vừa không dây'
+            elif 'USB 2.0' in connection_type or connection_type == 'có dây' or connection_type == 'Có dây'or 'cáp liền' in connection_type:
+                df.at[index, 'Kết nối'] = 'có dây'
+            elif connection_type == '0':
+                pass
+            else:
+                df.at[index, 'Kết nối'] = 'không dây'
     return df
-
-
-
-
-
-
 # Đọc dữ liệu từ file CSV
 df = read_data_from_csv('keyboard_data.csv')
 
@@ -126,7 +125,7 @@ df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichT
 
 df = replace_missing_value(df)
 df = change_connection_values(df)
-df = process_connection_column(df)
+df = update_connection_type(df)
 df.drop_duplicates()
 
 # Lưu dữ liệu đã được cập nhật vào file CSV
