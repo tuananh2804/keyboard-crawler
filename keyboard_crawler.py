@@ -29,7 +29,7 @@ def keyboard_crawler(max_pages):
     while page <= max_pages:
 
         #load starting url with header to bypass security
-        url = 'https://hacom.vn/ban-phim-may-tinh/1/'
+        url = 'https://hacom.vn/ban-phim-may-tinh/'+str(page)+'/'
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                    "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "gzip, deflate", 
@@ -114,7 +114,7 @@ def get_item(item_url, count):
             elif 'Switch' in key or 'Loại switch' in key:
                 switch = cells[1].text.strip()
   
-    csv_writer.writerow([name,brand,model,connectType,size,switch,formatted_price])
+    csv_writer.writerow([name,brand,model,connectType,size,switch,price])
 
 def main():
     max_pages = 23 # Số trang tối đa cần crawl
