@@ -1,9 +1,21 @@
 import pandas as pd
 import numpy as np
 import re
+import random
+from sklearn.impute import KNNImputer
+
+# !!!!README!!!!!
+# -Đã clean lại biến 'loại switch': chỉ giữ những dòng có ["blue", "cherry", "brown", "silver", "yellow", "pink", "green", "black", "white", "red"]
+# các dòng khác lấy giá trị random từ các biến trên
+# -Đã clean lại biến 'Model': chỉ lấy 32 model xuất hiện nhiều nhất, các dòng khác lấy giá trị random từ 32 giá trị đó
+# DONE:
+# -Thay thế hết các giá trị 0 ở các cột bằng giá trị random trong cột
+# -Riếng biến 'Kích thước' là biến số thực thì sử dụng cách khác(có thể là dự báo KNN)
+# -chuẩn hóa biến 'Kích thước' bằng min max scaler(đang nghiên cứu xem có cần thiết ko)
+
 
 def read_data_from_csv(filename):
-    df = pd.read_csv(filename, sep='\t',encoding='utf-8')
+    df = pd.read_csv(filename, sep='\t',encoding='utf-16')
     return df 
 
 def replace_missing_manufacturer(df):
@@ -65,7 +77,7 @@ def check_missing_data(df):
 def check_and_remove_empty_rows(df):
     # Kiểm tra nếu cột 'Nhà sản xuất' trống hoặc 3 trong 6 cột còn lại bị trống hoặc NaN, thì xóa hàng đó
     df['empty_count'] = df.isnull().sum(axis=1)
-    df = df[df['empty_count'] < 3]
+    df = df[df['empty_count'] <5]
     df = df.drop(columns=['empty_count'])
     return df
 
@@ -106,20 +118,20 @@ def update_size_column(df):
             if 'Fullsize' in size_value or 'fullsize' in size_value:
                 df.at[index, 'Kích thước'] = '430'
             elif 'Chiều cao' in size_value or 'Độ dài' in size_value or 'Đang cập nhật' in size_value:
-                df.at[index, 'Kích thước'] = '0'
+                df.at[index, 'Kích thước'] = np.nan
             elif 'Độ dài: ' in size_value or 'Đang cập nhật' in size_value:
-                df.at[index, 'Kích thước'] = '0'
+                df.at[index, 'Kích thước'] = np.nan
             elif '%' in size_value:
-                df.at[index, 'Kích thước'] = '0'
+                df.at[index, 'Kích thước'] = np.nan
             else:
                 # Kiểm tra nếu chuỗi chứa chữ cái
                 if any(c.isalpha() for c in size_value):
-                    df.at[index, 'Kích thước'] = '0'
+                    df.at[index, 'Kích thước'] = np.nan
     return df
 
 
 def simplify_decimal_to_integer(text):
-    # Kiểm tra nếu text không phải là chuỗi thì trả về text nguyên thể
+    # Kiểm tra nếu text không phải là chuỗi thì dtrả về text nguyên thể
     if isinstance(text, str):
         # Tìm kiếm số thập phân trong chuỗi và chuyển về số tự nhiên
         match = re.search(r'\d+\.\d+', text)
@@ -178,11 +190,70 @@ def add_zero_to_two_digits(value):
         return value + '0'
     return value
 
-# Đọc dữ liệu từ file CSV
-df = read_data_from_csv('data.csv')
 
+def replace_switch_type(switch):
+    replacement_words = ["blue", "cherry", "brown", "silver", "yellow", "pink", "green", "black", "white", "red"]
+    if isinstance(switch, str): 
+        replaced = False
+        for word in replacement_words:
+            if word in switch.lower():
+                replaced = True
+                return word
+        if not replaced:
+            return random.choice(replacement_words)
+    else:
+        return random.choice(replacement_words)
+
+def replace_model_with_top_32(df):
+    # Đếm số lần xuất hiện của mỗi giá trị trong cột 'Model'
+    model_counts = df['Model'].value_counts()
+
+    # Chọn ra 32 giá trị xuất hiện nhiều nhất
+    top_33_models = model_counts.head(33).index.tolist()
+    
+    # Loại trừ giá trị '0' khỏi top 32
+    top_32_models = [model for model in top_33_models if model != 0][:32]
+    
+    # Thay thế các giá trị khác bằng giá trị ngẫu nhiên từ 32 giá trị đã chọn
+    replacement_values = np.random.choice(top_32_models, size=len(df))
+    df['Model'] = np.where(~df['Model'].isin(top_32_models), replacement_values, df['Model'])
+    return df
+
+def handle_missing_size_data_with_KNN(df):
+    # Tạo một bản sao của DataFrame chỉ chứa cột cần xử lý
+    df['Kích thước'] = pd.to_numeric(df['Kích thước'], errors='coerce')
+    X = df[['Kích thước']].values
+    # Khởi tạo và huấn luyện mô hình KNN
+    imputer = KNNImputer(n_neighbors=15)
+    X_imputed = imputer.fit_transform(X)
+    # Thay thế cột cần xử lý trong DataFrame với dữ liệu đã được xử lý
+    df['Kích thước'] = X_imputed
+    return df
+def fill_missing_values_random(df, column):
+    # Lấy danh sách các giá trị không rỗng trong cột
+    non_null_values = df[column].dropna().unique()
+    
+    # Lấy số lượng dữ liệu trống cần điền
+    missing_count = df[column].isnull().sum()
+    
+    # Tạo một mảng chứa các giá trị ngẫu nhiên từ danh sách các giá trị không rỗng
+    random_values = np.random.choice(non_null_values, missing_count)
+    
+    # Thay thế các dữ liệu trống bằng các giá trị ngẫu nhiên
+    df.loc[df[column].isnull(), column] = random_values
+    
+    return df
+def min_max_scaling_size(series):
+    min_value = series.min()
+    max_value = series.max()
+    scaled_series = (series - min_value) / (max_value - min_value)
+    return scaled_series
+def to_numeric(series):
+    return pd.to_numeric(series, errors='coerce')
+df = read_data_from_csv('raw_data.csv')
 print("Thông kê dữ liệu trống trước khi thay thế:")
 check_missing_data(df)
+
 
 # Thực hiện thay thế dữ liệu trống trong cột "Nhà sản xuất"
 df = replace_missing_manufacturer(df)
@@ -191,9 +262,9 @@ df = replace_missing_model(df)
 print("Thông kê dữ liệu trống sau khi thay thế:")
 check_missing_data(df)
 
-# Kiểm tra và xóa các hàng bị trống nhiều thỏa mãn điều kiện
-df = check_and_remove_empty_rows(df)
 
+# Kiểm tra và xóa các hàng bị trống nhiều thỏa mãn điều kiện
+#df = check_and_remove_empty_rows(df)
 
 # Áp dụng hàm remove_special_characters cho cột 'Tên SP' 'Model' 'Kết nối' 'Loại switch'
 df['Tên SP'] = df['Tên SP'].apply(remove_special_characters)
@@ -201,35 +272,29 @@ df['Model'] = df['Model'].apply(remove_special_characters)
 df['Kết nối'] = df['Kết nối'].apply(remove_special_characters)
 df['Loại switch'] = df['Loại switch'].apply(remove_special_characters)
 
-df['Loại switch'] = df['Loại switch'].apply(remove_special_characters)
+df['Loại switch'] = df['Loại switch'].apply(replace_switch_type)
 
-df = remove_rows_with_size_info(df)
+#df = remove_rows_with_size_info(df)
 
 df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichThuoc)
 
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
-
-
-
+df['Kích thước'] = to_numeric(df['Kích thước'])
+df['Kích thước'] = min_max_scaling_size(df['Kích thước'])
 
 df = update_size_column(df)
 df['Giá(đ)'] = df['Giá(đ)'].apply(remove_commas)
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
 df = change_connection_values(df)
-df = replace_missing_value(df)
+# df = replace_missing_value(df)
 df = update_connection_type(df)
+df = replace_model_with_top_32(df)
+df = handle_missing_size_data_with_KNN(df)
+df = fill_missing_values_random(df,'Kết nối')
+df = fill_missing_values_random(df,'Nhà sản xuất')
 
-
-
-
-df = replace_nan_with_zero(df)
-
-df = update_size_column(df)
-
-
-
+# df = replace_nan_with_zero(df)
 df['Kích thước'] = df['Kích thước'].apply(add_zero_to_two_digits)
-
 df = convert_decimal_to_integer(df)
 # Lưu dữ liệu đã được cập nhật vào file CSV
 df.to_csv('clean_data.csv', index=False,encoding='utf-8-sig')
