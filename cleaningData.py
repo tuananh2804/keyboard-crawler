@@ -280,7 +280,7 @@ df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichT
 
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
 df['Kích thước'] = to_numeric(df['Kích thước'])
-df['Kích thước'] = min_max_scaling_size(df['Kích thước'])
+#df['Kích thước'] = min_max_scaling_size(df['Kích thước'])
 
 df = update_size_column(df)
 df['Giá(đ)'] = df['Giá(đ)'].apply(remove_commas)
