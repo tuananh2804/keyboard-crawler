@@ -16,7 +16,7 @@ def keyboard_crawler(max_pages):
     # create and opens a .csv file in write mode and loads in the appropriate headlings
     csv_file = open('raw_data.csv', 'w',newline='',encoding='UTF-16')
     csv_writer = csv.writer(csv_file,delimiter='\t')
-    csv_writer.writerow(['Tên SP','Nhà sản xuất','Model','Kết nối','Kích thước','Loại switch','Giá(đ)'])
+    csv_writer.writerow(['Tên SP','Nhà sản xuất','Model','Kết nối','Kích thước','Loại switch','Cân nặng','Giá(đ)'])
 
 
     # define the start page
@@ -91,7 +91,7 @@ def get_item(item_url, count):
 
     # Khởi tạo danh sách để chứa thông tin từng dòng
     info_list = []
-    brand= model =connectType = size= switch= ''
+    brand= model =connectType = size= switch= weight = ''
 
     # Lặp qua từng dòng và lưu vào danh sách
     for row in rows:
@@ -108,8 +108,10 @@ def get_item(item_url, count):
                 size = cells[1].text.strip()
             elif 'Switch' in key or 'Loại switch' in key:
                 switch = cells[1].text.strip()
+            elif 'Trọng lượng' in key or 'Cân nặng' in key:
+                weight = cells[1].text.strip()
   
-    csv_writer.writerow([name,brand,model,connectType,size,switch,price])
+    csv_writer.writerow([name,brand,model,connectType,size,switch,weight,price])
 
 def main():
     max_pages = 23 # Số trang tối đa cần crawl

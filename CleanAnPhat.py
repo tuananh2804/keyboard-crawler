@@ -39,26 +39,26 @@ def replace_missing_manufacturer(df):
     
     return df
 
-def replace_missing_model(df):
-    # Thay đổi giá trị 'Đang cập nhật' thành khoảng trắng
-    df['Model'] = df['Model'].replace('Đang cập nhật', '')
+# def replace_missing_model(df):
+#     # Thay đổi giá trị 'Đang cập nhật' thành khoảng trắng
+#     df['Model'] = df['Model'].replace('Đang cập nhật', '')
 
-    # Tạo một danh sách chứa tất cả các model đã xuất hiện trong cột "Model"
-    models = df['Model'].unique().tolist()
+#     # Tạo một danh sách chứa tất cả các model đã xuất hiện trong cột "Model"
+#     models = df['Model'].unique().tolist()
     
-    # Duyệt qua từng dòng trong dataframe
-    for index, row in df.iterrows():
-        product_name = row['Tên SP']
-        if isinstance(product_name, str):  # Kiểm tra xem giá trị của product_name có phải là chuỗi không
-            # Duyệt qua từng model đã từng xuất hiện
-            for model in models:
-                if isinstance(model, str):  # Kiểm tra xem giá trị của model có phải là chuỗi không
-                    # Nếu tên model có trong tên sản phẩm thì thay thế dữ liệu trống trong cột "Model"
-                    if model.lower() in product_name.lower():
-                        df.at[index, 'Model'] = model
-                        break  # Sau khi thay thế xong, thoát khỏi vòng lặp
+#     # Duyệt qua từng dòng trong dataframe
+#     for index, row in df.iterrows():
+#         product_name = row['Tên SP']
+#         if isinstance(product_name, str):  # Kiểm tra xem giá trị của product_name có phải là chuỗi không
+#             # Duyệt qua từng model đã từng xuất hiện
+#             for model in models:
+#                 if isinstance(model, str):  # Kiểm tra xem giá trị của model có phải là chuỗi không
+#                     # Nếu tên model có trong tên sản phẩm thì thay thế dữ liệu trống trong cột "Model"
+#                     if model.lower() in product_name.lower():
+#                         df.at[index, 'Model'] = model
+#                         break  # Sau khi thay thế xong, thoát khỏi vòng lặp
     
-    return df
+#     return df
 
 def replace_missing_value(df):
     # Thay đổi giá trị NaN thành 0 trong tất cả các cột
@@ -147,9 +147,9 @@ def update_connection_type(df):
     for index, row in df.iterrows():
         connection_type = row['Kết nối']
         if isinstance(connection_type, str):
-            if 'Type C' in connection_type:
+            if 'Type-C' in connection_type:
                 df.at[index, 'Kết nối'] = 'vừa có dây vừa không dây'
-            elif 'USB 2.0' in connection_type or connection_type == 'có dây' or connection_type == 'Có dây'or 'cáp liền' in connection_type:
+            elif 'USB 2.0' in connection_type or connection_type in 'có dây' or connection_type in 'Có dây'or 'cáp liền' in connection_type:
                 df.at[index, 'Kết nối'] = 'có dây'
             elif connection_type == '0':
                 pass
@@ -219,8 +219,8 @@ def replace_model_with_top_32(df):
     df['Model'] = np.where(~df['Model'].isin(top_32_models), replacement_values, df['Model'])
     return df
 
-def handle_missing_size_data_with_KNN(df):
-    # Tạo một bản sao của DataFrame chỉ chứa cột cần xử lý
+def handle_missing_data_with_KNN(df):
+    # Đảm bảo rằng các cột 'Kích thước' và 'Cân nặng' đều là kiểu số
     df['Kích thước'] = pd.to_numeric(df['Kích thước'], errors='coerce')
     df['Cân nặng'] = pd.to_numeric(df['Cân nặng'], errors='coerce')
     
@@ -256,14 +256,17 @@ def min_max_scaling_size(series):
     return scaled_series
 def to_numeric(series):
     return pd.to_numeric(series, errors='coerce')
+import pandas as pd
+import re
+
 def convert_weight(value):
     # Kiểm tra xem giá trị có phải là chuỗi hay không
     if isinstance(value, str):
         # Xóa bỏ các ký tự không cần thiết và khoảng trắng thừa
-        value = value.strip().lower().replace('~', '').replace(' ', '').replace(':', '').replace(',', '.')
+        value = value.strip().lower().replace('~', '').replace(' ', '').replace(':', '')
         
         # Tìm số và đơn vị (g hoặc kg)
-        match = re.search(r"(\d+([.]\d+)?)(kg|g)?", value)
+        match = re.search(r"(\d+(\.\d+)?)(kg|g)?", value)
         if match:
             weight = float(match.group(1))
             unit = match.group(3)
@@ -278,17 +281,30 @@ def convert_weight(value):
         return None
     else:  # Trường hợp khác (nếu có giá trị đã là số)
         return int(value)
-def replace_values(df, column):
-    df.loc[df[column] < 200, column] = np.nan
+def replace_empty_and_contact(df, column):
+    """
+    Replace empty strings and 'Liên hệ' with random values in a column of a DataFrame.
+    """
+
+    # Replace empty strings and 'Liên hệ' with NaN
+    df[column].replace(['', 'Liên hệ'], np.nan, inplace=True)
+
+    # Get unique non-null values
+    unique_values = df[column].dropna().unique()
+
+    # Replace NaN values with random values from unique non-null values
+    df[column] = df[column].apply(lambda x: np.random.choice(unique_values) if pd.isnull(x) else x)
+
     return df
-df = read_data_from_csv('raw_data.csv')
+
+df = read_data_from_csv('raw_data_anphatpc.csv')
 print("Thông kê dữ liệu trống trước khi thay thế:")
 check_missing_data(df)
 
 
 # Thực hiện thay thế dữ liệu trống trong cột "Nhà sản xuất"
 df = replace_missing_manufacturer(df)
-df = replace_missing_model(df)
+# df = replace_missing_model(df)
 # Kiểm tra lại dữ liệu trống sau khi thực hiện thay thế
 print("Thông kê dữ liệu trống sau khi thay thế:")
 check_missing_data(df)
@@ -302,7 +318,6 @@ df['Tên SP'] = df['Tên SP'].apply(remove_special_characters)
 df['Model'] = df['Model'].apply(remove_special_characters)
 df['Kết nối'] = df['Kết nối'].apply(remove_special_characters)
 df['Loại switch'] = df['Loại switch'].apply(remove_special_characters)
-
 df['Loại switch'] = df['Loại switch'].apply(replace_switch_type)
 
 #df = remove_rows_with_size_info(df)
@@ -312,24 +327,23 @@ df['Kích thước'] = df['Kích thước'].apply(remove_special_charactersKichT
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
 df['Kích thước'] = to_numeric(df['Kích thước'])
 #df['Kích thước'] = min_max_scaling_size(df['Kích thước'])
-df['Cân nặng'] = df['Cân nặng'].apply(convert_weight)
-df = replace_values(df, 'Cân nặng')
 
 df = update_size_column(df)
-df['Giá(đ)'] = df['Giá(đ)'].apply(remove_commas)
+# df['Giá(đ)'] = df['Giá(đ)'].apply(replace_with_random_value)
+df = replace_empty_and_contact(df, 'Giá(đ)')
+df['Cân nặng'] = df['Cân nặng'].apply(convert_weight)
 df['Kích thước'] = df['Kích thước'].apply(simplify_decimal_to_integer)
 df = change_connection_values(df)
 # df = replace_missing_value(df)
 df = update_connection_type(df)
 df = replace_model_with_top_32(df)
-df = handle_missing_size_data_with_KNN(df)
+df = handle_missing_data_with_KNN(df)
 df = fill_missing_values_random(df,'Kết nối')
 df = fill_missing_values_random(df,'Nhà sản xuất')
-
 # df = replace_nan_with_zero(df)
 df['Kích thước'] = df['Kích thước'].apply(add_zero_to_two_digits)
 df = convert_decimal_to_integer(df)
 # Lưu dữ liệu đã được cập nhật vào file CSV
-df.to_csv('clean_data.csv', index=False,encoding='utf-8-sig')
+df.to_csv('clean_data_anphat.csv', index=False,encoding='utf-8-sig')
 
-print("Kiểm tra và cập nhật dữ liệu thành công. Kết quả đã được lưu vào file 'clean_data.csv'")
+print("Kiểm tra và cập nhật dữ liệu thành công. Kết quả đã được lưu vào file 'clean_data_anphat.csv'")

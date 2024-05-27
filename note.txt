@@ -1,0 +1,1 @@
+ý tưởng: phân cụm -> khoảng giá từng cụm -> dự đoán -> repeat với pp phân cụm khác
